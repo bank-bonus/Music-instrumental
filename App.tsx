@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DrumPad } from './components/DrumPad';
+import DrumPad from './components/DrumPad';
 import SynthKeys from './components/SynthKeys';
 import StringInstrument from './components/StringInstrument';
 import StudioControls from './components/StudioControls';
