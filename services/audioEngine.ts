@@ -51,6 +51,12 @@ class AudioEngine {
         this.playGuitarString(event.note, playTime);
       } else if (event.instrument === 'bass') {
         this.playBassString(event.note, playTime);
+      } else if (event.instrument === 'violin') {
+        this.playViolinString(event.note, playTime);
+      } else if (event.instrument === 'cello') {
+        this.playCelloString(event.note, playTime);
+      } else if (event.instrument === 'ukulele') {
+        this.playUkuleleString(event.note, playTime);
       } else {
         this.playPreset(event.instrument as InstrumentPreset, event.note, playTime);
       }
@@ -249,6 +255,18 @@ class AudioEngine {
       case 'sax':
         this.playSax(freq, t);
         break;
+      case 'violin':
+        this.playViolinString(note, t);
+        break;
+      case 'cello':
+        this.playCelloString(note, t);
+        break;
+      case 'ukulele':
+        this.playUkuleleString(note, t);
+        break;
+      case 'flute':
+        this.playFlute(freq, t);
+        break;
       case 'piano':
       case 'sine':
       case 'square':
@@ -367,8 +385,50 @@ class AudioEngine {
     this.scheduledNodes.push(osc, lfo);
   }
 
+  private playFlute(freq: number, t: number) {
+    if (!this.ctx || !this.masterGain) return;
+    // Flute: Sine wave + Breath noise
+    
+    // Tone
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.5, t + 0.05);
+    gain.gain.linearRampToValueAtTime(0, t + 1.0);
+
+    // Breath (Noise)
+    const noiseBuffer = this.createNoiseBuffer();
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = freq * 1.5; // Breath around the tone
+    noiseFilter.Q.value = 1;
+    
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, t);
+    noiseGain.gain.linearRampToValueAtTime(0.1, t + 0.02); // Short burst of breath
+    noiseGain.gain.linearRampToValueAtTime(0, t + 0.3);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 1.0);
+    noise.start(t);
+    noise.stop(t + 0.3);
+    
+    this.scheduledNodes.push(osc, noise);
+  }
+
   public playNote(note: string, waveType: string) {
-      // Wrapper for backward compatibility or simple calls
       this.playPreset(waveType as InstrumentPreset, note);
   }
 
@@ -441,6 +501,112 @@ class AudioEngine {
     osc.stop(t + 1.0);
     subOsc.stop(t + 1.0);
     this.scheduledNodes.push(osc, subOsc);
+  }
+
+  public playViolinString(note: string, time?: number) {
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+    const freq = NOTE_FREQUENCIES[note];
+    if (!freq) return;
+
+    const t = time || this.ctx.currentTime;
+
+    // Violin: Sawtooth with vibrato and bandpass to simulate body resonance
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+
+    // Vibrato
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 6;
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.value = 3;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2000;
+    filter.Q.value = 0.5;
+
+    const gain = this.ctx.createGain();
+    // Slow attack (bowing)
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.6, t + 0.1); 
+    gain.gain.linearRampToValueAtTime(0, t + 1.5);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    lfo.start(t);
+    osc.stop(t + 1.5);
+    lfo.stop(t + 1.5);
+    this.scheduledNodes.push(osc, lfo);
+  }
+
+  public playCelloString(note: string, time?: number) {
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+    const freq = NOTE_FREQUENCIES[note];
+    if (!freq) return;
+
+    const t = time || this.ctx.currentTime;
+
+    // Cello: Deeper Sawtooth, slower attack
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800; // Mellow
+    
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.7, t + 0.2); // Slower attack
+    gain.gain.linearRampToValueAtTime(0, t + 2.0);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 2.0);
+    this.scheduledNodes.push(osc);
+  }
+
+  public playUkuleleString(note: string, time?: number) {
+    this.init();
+    if (!this.ctx || !this.masterGain) return;
+    const freq = NOTE_FREQUENCIES[note];
+    if (!freq) return;
+
+    const t = time || this.ctx.currentTime;
+    
+    // Ukulele: Sine/Triangle mix, nylon string sound, quick decay
+    const osc = this.ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2000, t);
+    filter.frequency.exponentialRampToValueAtTime(500, t + 0.2);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.5, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8); // Short decay
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.8);
+    this.scheduledNodes.push(osc);
   }
 
   // --- Utils ---
