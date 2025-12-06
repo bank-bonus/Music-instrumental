@@ -48,9 +48,10 @@ const Library: React.FC<Props> = ({ onLoad }) => {
   const handleShare = (e: React.MouseEvent, song: Song) => {
       e.stopPropagation();
       if (window.vkBridge) {
-          const message = `🎵 Я записал новый трек "${song.title}" в приложении Music Studio AI! \n\nВ нем ${song.tracks.length} дорожек. Попробуй и ты создать свой хит! #vk_music_studio`;
+          const message = `🎵 Я записал новый трек "${song.title}" в приложении "Создай Мелодию"! \n\nВ нем ${song.tracks.length} дорожек. Попробуй и ты создать свой хит! https://vk.com/app54060719`;
           window.vkBridge.send('VKWebAppShowWallPostBox', {
-              message: message
+              message: message,
+              attachments: 'https://vk.com/app54060719'
           }).catch((err: any) => console.log(err));
       } else {
           alert('Шеринг доступен только ВКонтакте');

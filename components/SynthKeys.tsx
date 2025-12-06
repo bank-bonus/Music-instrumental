@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PIANO_KEYS } from '../constants';
 import { audioEngine } from '../services/audioEngine';
 import { InstrumentPreset } from '../types';
 import { recorder } from '../services/recorder';
 
-const SynthKeys: React.FC = () => {
-  const [preset, setPreset] = useState<InstrumentPreset>('piano');
+interface Props {
+    title?: string;
+    forcedPreset?: InstrumentPreset;
+    hidePresets?: boolean;
+}
+
+const SynthKeys: React.FC<Props> = ({ title = "СИНТЕЗАТОР", forcedPreset, hidePresets = false }) => {
+  const [preset, setPreset] = useState<InstrumentPreset>(forcedPreset || 'piano');
   const [activeKey, setActiveKey] = useState<string | null>(null);
+
+  useEffect(() => {
+      if (forcedPreset) setPreset(forcedPreset);
+  }, [forcedPreset]);
 
   const playNote = (note: string) => {
     audioEngine.playPreset(preset, note);
@@ -24,26 +34,28 @@ const SynthKeys: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center p-4 w-full">
-      <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 mb-6 tracking-tight">
-        СИНТЕЗАТОР
+      <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 mb-6 tracking-tight uppercase">
+        {title}
       </h2>
       
       {/* Preset Selector */}
-      <div className="flex gap-2 mb-10 glass-panel p-2 rounded-xl overflow-x-auto max-w-full">
-        {presets.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setPreset(p.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold capitalize whitespace-nowrap transition-all ${
-              preset === p.id 
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/25' 
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {!hidePresets && (
+        <div className="flex gap-2 mb-10 glass-panel p-2 rounded-xl overflow-x-auto max-w-full">
+            {presets.map((p) => (
+            <button
+                key={p.id}
+                onClick={() => setPreset(p.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold capitalize whitespace-nowrap transition-all ${
+                preset === p.id 
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/25' 
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+                {p.label}
+            </button>
+            ))}
+        </div>
+      )}
 
       {/* Keyboard */}
       <div className="relative flex justify-center select-none h-52 sm:h-72 w-full max-w-3xl overflow-hidden rounded-b-xl shadow-2xl shadow-black/50 bg-black/20 p-1 rounded-xl">
