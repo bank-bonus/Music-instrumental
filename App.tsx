@@ -7,24 +7,90 @@ import Library from './components/Library';
 import { ViewState } from './types';
 import { audioEngine } from './services/audioEngine';
 import { recorder } from './services/recorder';
-import { GUITAR_TUNING, BASS_TUNING } from './constants';
+import { GUITAR_TUNING, BASS_TUNING, VIOLIN_TUNING, CELLO_TUNING, UKULELE_TUNING } from './constants';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.MENU);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [songName, setSongName] = useState('');
+  const [unlockedItems, setUnlockedItems] = useState<string[]>([]);
 
   useEffect(() => {
     // Initialize VK Bridge
     if (window.vkBridge) {
       window.vkBridge.send('VKWebAppInit');
+      // Show Banner Ad
+      window.vkBridge.send('VKWebAppShowBannerAd', {
+        banner_location: 'bottom'
+      }).catch((e: any) => console.log('Ad error:', e));
+    }
+
+    // Load unlocked items (mock persistence)
+    const stored = localStorage.getItem('vk_music_unlocked');
+    if (stored) {
+        setUnlockedItems(JSON.parse(stored));
     }
   }, []);
 
   const handleNav = (target: ViewState) => {
+    // Check locked status - DISABLED FOR NOW per user request (Unlocked mode)
+    /* 
+    if (target === ViewState.VIOLIN && !unlockedItems.includes('violin')) {
+        handleBuy('violin', 'Скрипка');
+        return;
+    }
+    if (target === ViewState.FLUTE && !unlockedItems.includes('flute')) {
+        handleBuy('flute', 'Флейта');
+        return;
+    }
+    if (target === ViewState.CELLO && !unlockedItems.includes('cello')) {
+        handleBuy('cello', 'Виолончель');
+        return;
+    }
+    // ... others ...
+    */
+
     // Initialize audio context on first user interaction
     audioEngine.init();
     setView(target);
+  };
+
+  const handleBuy = (itemId: string, itemName: string) => {
+      if (window.vkBridge) {
+          window.vkBridge.send('VKWebAppShowOrderBox', { 
+              type: 'item', 
+              item: itemId 
+          })
+          .then(() => {
+              // Success
+              unlockItem(itemId);
+          })
+          .catch(() => {
+              // For demo purposes, we unlock even if it fails or if running outside VK
+              // In production, verify signature
+              if (confirm(`Купить инструмент "${itemName}" за 5 голосов? (Демо-режим: нажмите ОК для бесплатной разблокировки)`)) {
+                  unlockItem(itemId);
+              }
+          });
+      } else {
+          // Fallback for browser testing
+          if (confirm(`Купить инструмент "${itemName}"?`)) {
+              unlockItem(itemId);
+          }
+      }
+  };
+
+  const unlockItem = (itemId: string) => {
+      const newUnlocked = [...unlockedItems, itemId];
+      setUnlockedItems(newUnlocked);
+      localStorage.setItem('vk_music_unlocked', JSON.stringify(newUnlocked));
+      alert('Инструмент разблокирован!');
+      if (itemId === 'violin') setView(ViewState.VIOLIN);
+      if (itemId === 'flute') setView(ViewState.FLUTE);
+      if (itemId === 'cello') setView(ViewState.CELLO);
+      if (itemId === 'ukulele') setView(ViewState.UKULELE);
+      if (itemId === 'sax') setView(ViewState.SAXOPHONE);
+      if (itemId === '8bit') setView(ViewState.EIGHT_BIT);
   };
 
   const handleSave = () => {
@@ -57,12 +123,25 @@ const App: React.FC = () => {
         return <StringInstrument type="guitar" tuning={GUITAR_TUNING} />;
       case ViewState.BASS:
         return <StringInstrument type="bass" tuning={BASS_TUNING} />;
+      case ViewState.VIOLIN:
+        return <StringInstrument type="violin" tuning={VIOLIN_TUNING} />;
+      case ViewState.CELLO:
+        return <StringInstrument type="cello" tuning={CELLO_TUNING} />;
+      case ViewState.UKULELE:
+        return <StringInstrument type="ukulele" tuning={UKULELE_TUNING} />;
+      case ViewState.FLUTE:
+        return <SynthKeys title="ФЛЕЙТА" forcedPreset="flute" hidePresets={true} />;
+      case ViewState.SAXOPHONE:
+        return <SynthKeys title="САКСОФОН" forcedPreset="sax" hidePresets={true} />;
+      case ViewState.EIGHT_BIT:
+        return <SynthKeys title="8-BIT КОНСОЛЬ" forcedPreset="8bit" hidePresets={true} />;
       case ViewState.LIBRARY:
         return <Library onLoad={() => setView(ViewState.MENU)} />;
       case ViewState.MENU:
       default:
         return (
           <div className="grid grid-cols-1 gap-6 w-full max-w-sm px-4 perspective-1000">
+            {/* Existing Instruments */}
             <button
               onClick={() => handleNav(ViewState.DRUMS)}
               className="group relative p-6 rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_40px_-10px_rgba(244,63,94,0.6)]"
@@ -122,6 +201,42 @@ const App: React.FC = () => {
               </div>
             </button>
 
+            <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-2" />
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center mb-1">Магазин Инструментов</div>
+
+            <div className="grid grid-cols-2 gap-4">
+                {/* Premium Instruments */}
+                {[
+                  { id: ViewState.VIOLIN, icon: '🎻', name: 'Скрипка', color: 'from-yellow-600 to-amber-700', shadow: 'rgba(234,179,8,0.6)', key: 'violin' },
+                  { id: ViewState.CELLO, icon: '🎻', name: 'Виолончель', color: 'from-amber-800 to-orange-900', shadow: 'rgba(234,88,12,0.6)', key: 'cello' },
+                  { id: ViewState.FLUTE, icon: '🎼', name: 'Флейта', color: 'from-teal-500 to-emerald-600', shadow: 'rgba(20,184,166,0.6)', key: 'flute' },
+                  { id: ViewState.SAXOPHONE, icon: '🎷', name: 'Саксофон', color: 'from-amber-400 to-yellow-500', shadow: 'rgba(250,204,21,0.6)', key: 'sax' },
+                  { id: ViewState.UKULELE, icon: '🥥', name: 'Укулеле', color: 'from-lime-500 to-green-600', shadow: 'rgba(132,204,22,0.6)', key: 'ukulele' },
+                  { id: ViewState.EIGHT_BIT, icon: '👾', name: '8-Bit', color: 'from-pink-500 to-rose-500', shadow: 'rgba(244,63,94,0.6)', key: '8bit' },
+                ].map(inst => (
+                    <button
+                        key={inst.id}
+                        onClick={() => handleNav(inst.id)}
+                        className={`group relative p-4 rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.05] hover:shadow-[0_0_20px_-5px_${inst.shadow}] h-36 flex flex-col justify-between`}
+                    >
+                        <div className={`absolute inset-0 bg-gradient-to-br ${inst.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
+                        <div className="relative flex justify-between items-start">
+                             <div className="text-3xl drop-shadow-md">{inst.icon}</div>
+                             {/* Always show checkmark for now as per "unlocked" request, or show lock if strictly following logic but bypassing. Let's show check to indicate availability */}
+                             <div className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center border border-white/20">
+                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+                             </div>
+                        </div>
+                        <div className="relative text-left">
+                            <div className="text-lg font-black text-white tracking-tight drop-shadow-md leading-none">{inst.name}</div>
+                            <div className="text-white/80 font-medium text-[10px] mt-1 flex items-center gap-1">
+                                Бесплатно
+                            </div>
+                        </div>
+                    </button>
+                ))}
+            </div>
+
             <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-4" />
 
             <div className="flex gap-4">
@@ -141,6 +256,8 @@ const App: React.FC = () => {
                  <span className="text-sm">Пригласить</span>
               </button>
             </div>
+            {/* Spacer for Ad */}
+            <div className="h-20"></div>
           </div>
         );
     }
@@ -149,7 +266,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen text-slate-100 font-sans selection:bg-indigo-500/50">
       {/* Header */}
-      <header className="glass-panel sticky top-0 z-40 border-b-0 border-white/5">
+      <header className="glass-panel sticky top-0 z-40 border-b-0 border-white/5 pt-4">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer group" 
@@ -159,7 +276,7 @@ const App: React.FC = () => {
                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 drop-shadow-sm">
-              STUDIO<span className="text-indigo-400">.AI</span>
+              СОЗДАЙ<span className="text-indigo-400"> МЕЛОДИЮ</span>
             </h1>
           </div>
           

@@ -4,6 +4,12 @@ export enum ViewState {
   SYNTH = 'SYNTH',
   GUITAR = 'GUITAR',
   BASS = 'BASS',
+  VIOLIN = 'VIOLIN',
+  CELLO = 'CELLO',
+  UKULELE = 'UKULELE',
+  FLUTE = 'FLUTE',
+  SAXOPHONE = 'SAXOPHONE',
+  EIGHT_BIT = 'EIGHT_BIT',
   LIBRARY = 'LIBRARY'
 }
 
@@ -19,7 +25,7 @@ export enum SoundType {
   RIDE = 'RIDE'
 }
 
-export type InstrumentPreset = 'piano' | 'pad' | '8bit' | 'sax' | 'sine' | 'square' | 'sawtooth' | 'triangle';
+export type InstrumentPreset = 'piano' | 'pad' | '8bit' | 'sax' | 'sine' | 'square' | 'sawtooth' | 'triangle' | 'violin' | 'flute' | 'cello' | 'ukulele';
 
 export interface DrumPadConfig {
   id: SoundType;
