@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [songName, setSongName] = useState('');
   const [unlockedItems, setUnlockedItems] = useState<string[]>([]);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
     // Initialize VK Bridge
@@ -31,6 +32,17 @@ const App: React.FC = () => {
         setUnlockedItems(JSON.parse(stored));
     }
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+        const timer = setTimeout(() => setNotification(null), 3000);
+        return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+      setNotification({ message, type });
+  };
 
   const handleNav = (target: ViewState) => {
     // Check locked status - DISABLED FOR NOW per user request (Unlocked mode)
@@ -84,7 +96,7 @@ const App: React.FC = () => {
       const newUnlocked = [...unlockedItems, itemId];
       setUnlockedItems(newUnlocked);
       localStorage.setItem('vk_music_unlocked', JSON.stringify(newUnlocked));
-      alert('Инструмент разблокирован!');
+      showToast('Инструмент разблокирован!', 'success');
       if (itemId === 'violin') setView(ViewState.VIOLIN);
       if (itemId === 'flute') setView(ViewState.FLUTE);
       if (itemId === 'cello') setView(ViewState.CELLO);
@@ -101,16 +113,36 @@ const App: React.FC = () => {
     if (window.vkBridge) {
        window.vkBridge.send('VKWebAppTapticNotificationOccurred', { type: 'success' });
     }
-    alert('Проект сохранен в библиотеку!');
+    showToast('Проект сохранен в библиотеку!', 'success');
   };
 
   const handleInvite = () => {
     if (window.vkBridge) {
+      // Try standard invite box first
       window.vkBridge.send('VKWebAppShowInviteBox', {})
-        .catch((e: any) => console.log(e));
+        .then((data: any) => {
+            if (!data.success) {
+                 // If success is false, try fallback
+                 fallbackShare();
+            }
+        })
+        .catch((e: any) => {
+            console.log('Invite box failed, using fallback:', e);
+            fallbackShare();
+        });
     } else {
-      alert("Функция доступна внутри ВКонтакте");
+      showToast("Функция доступна внутри ВКонтакте", "error");
     }
+  };
+
+  const fallbackShare = () => {
+      if (window.vkBridge) {
+          window.vkBridge.send('VKWebAppShare', {
+              link: 'https://vk.com/app54060719'
+          }).catch((e: any) => {
+              showToast("Не удалось открыть окно приглашения", "error");
+          });
+      }
   };
 
   const renderContent = () => {
@@ -265,6 +297,28 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-slate-100 font-sans selection:bg-indigo-500/50">
+      {/* Notifications */}
+      {notification && (
+        <div className="fixed top-6 left-0 w-full z-[100] flex justify-center pointer-events-none animate-slide-in-top px-4">
+            <div className={`
+                w-full max-w-sm p-4 rounded-2xl shadow-2xl border backdrop-blur-md flex items-center gap-4
+                ${notification.type === 'success' ? 'bg-emerald-900/90 border-emerald-500/50 text-emerald-100' : 'bg-red-900/90 border-red-500/50 text-red-100'}
+            `}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${notification.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                    {notification.type === 'success' ? (
+                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/></svg>
+                    ) : (
+                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    )}
+                </div>
+                <div>
+                    <h4 className="font-bold text-white leading-tight">{notification.type === 'success' ? 'Успешно' : 'Ошибка'}</h4>
+                    <p className="text-sm opacity-90 leading-tight">{notification.message}</p>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="glass-panel sticky top-0 z-40 border-b-0 border-white/5 pt-4">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
